@@ -1,40 +1,27 @@
-// components/ScheduleView.js
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React from "react";
 
-const ScheduleView = ({ selectedCountries }) => {
-  const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const ScheduleView = ({ matches, teams, selectedCountries }) => {
+  const teamById = Object.fromEntries(teams.map((t) => [t.id, t]));
+  const teamName = (id) => teamById[id]?.name ?? `Team ${id}`;
 
-  useEffect(() => {
-    // Fetch matches from an API endpoint
-    axios
-      .get("/api/matches")
-      .then((response) => {
-        setMatches(response.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError("Failed to fetch matches");
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p>{error}</p>;
-
-  // Filter matches based on selected countries
-  const filteredMatches = matches.filter(
-    (match) =>
-      selectedCountries.includes(match.team1Id) ||
-      selectedCountries.includes(match.team2Id),
-  );
+  const filteredMatches =
+    selectedCountries.length === 0
+      ? []
+      : matches.filter((match) => {
+          const country1 = teamById[match.team1Id]?.countryId;
+          const country2 = teamById[match.team2Id]?.countryId;
+          return (
+            selectedCountries.includes(country1) ||
+            selectedCountries.includes(country2)
+          );
+        });
 
   return (
     <div>
       <h2>Schedule</h2>
-      {filteredMatches.length === 0 ? (
+      {selectedCountries.length === 0 ? (
+        <p>Select a country to see upcoming matches.</p>
+      ) : filteredMatches.length === 0 ? (
         <p>No matches found for selected countries.</p>
       ) : (
         filteredMatches.map((match) => (
@@ -42,7 +29,7 @@ const ScheduleView = ({ selectedCountries }) => {
             <strong>{new Date(match.date).toLocaleString()}</strong> - Group{" "}
             {match.group}
             <p>
-              Team {match.team1Id} vs Team {match.team2Id}
+              {teamName(match.team1Id)} vs {teamName(match.team2Id)}
             </p>
             {match.result ? (
               <p>

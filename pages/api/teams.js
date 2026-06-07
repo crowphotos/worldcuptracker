@@ -1,64 +1,45 @@
-// pages/api/teams.js
-import Team from "../../models/team";
-import axios from "axios";
+import Team from '../../models/team';
+import { teams, countries } from '../../lib/store';
 
-const teams = [
-  new Team(1, "USA National Team", 1),
-  new Team(2, "Canada National Team", 2),
-  // Add more teams
-];
-
-export default (req, res) => {
+export default function handler(req, res) {
   switch (req.method) {
-    case "GET":
-      return getTeams(req, res);
-    case "POST":
-      return createTeam(req, res);
+    case 'GET':  return getTeams(req, res);
+    case 'POST': return createTeam(req, res);
     default:
-      res.setHeader("Allow", ["GET", "POST"]);
+      res.setHeader('Allow', ['GET', 'POST']);
       return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-};
+}
 
-// Get all teams
-const getTeams = (req, res) => {
+function getTeams(_req, res) {
   try {
     res.status(200).json(teams);
-  } catch (error) {
-    console.error("Error fetching teams:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+  } catch (err) {
+    console.error('GET /api/teams:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-};
+}
 
-// Create a new team
-const createTeam = async (req, res) => {
+function createTeam(req, res) {
   try {
-    const { name, countryId } = req.body;
+    const { name, countryId } = req.body ?? {};
 
-    // Validate input
-    if (
-      !name ||
-      typeof name !== "string" ||
-      !countryId ||
-      typeof countryId !== "number"
-    ) {
-      return res.status(400).json({ error: "Invalid team data" });
+    if (typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'name must be a non-empty string' });
+    }
+    if (!Number.isInteger(countryId) || countryId <= 0) {
+      return res.status(400).json({ error: 'countryId must be a positive integer' });
+    }
+    if (!countries.some((c) => c.id === countryId)) {
+      return res.status(400).json({ error: 'Country not found' });
     }
 
-    // Check if the country exists (optional, depending on your requirements)
-    const countries = await axios.get("/api/countries");
-    if (!countries.data.some((country) => country.id === countryId)) {
-      return res.status(400).json({ error: "Country not found" });
-    }
-
-    const newTeamId =
-      teams.length > 0 ? Math.max(...teams.map((team) => team.id)) + 1 : 1;
-    const newTeam = new Team(newTeamId, name, countryId);
-    teams.push(newTeam);
-
-    res.status(201).json(newTeam);
-  } catch (error) {
-    console.error("Error creating team:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    const id = teams.length > 0 ? Math.max(...teams.map((t) => t.id)) + 1 : 1;
+    const team = new Team(id, name, countryId);
+    teams.push(team);
+    res.status(201).json(team);
+  } catch (err) {
+    console.error('POST /api/teams:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
-};
+}
